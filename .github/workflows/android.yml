@@ -1,0 +1,122 @@
+# Kasvila REKO: automaattinen rakennus ja julkaisu.
+#
+# * Jokainen push main-haaraan ja jokainen pull request: rakennetaan
+#   allekirjoittamaton debug-APK. Näin nähdään heti, kääntyykö koodi.
+#   APK on ladattavissa ajon "Artifacts"-kohdasta testausta varten.
+# * Tagi vN (esim. v58): rakennetaan allekirjoitettu release-APK ja tehdään
+#   GitHub-julkaisu, josta sovelluksen päivitystarkistus (UpdateChecker.kt)
+#   löytää sen. Tagin numeron on oltava sama kuin versionCode.
+#
+# Allekirjoitus tarvitsee repon salaisuudet (Settings → Secrets and variables
+# → Actions): KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD.
+# Ohje: docs/AUTOMAATTINEN_JULKAISU.md
+name: Android
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.4.1"
+
+      - name: Debug-rakennus (tarkistus)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        run: gradle --no-daemon :app:assembleDebug
+
+      - name: Debug-APK talteen
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: kasvila-reko-debug-${{ github.run_number }}
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+
+      - name: Tarkista tagi ja versionCode
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          CODE=$(grep -Po 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts)
+          echo "Tagi: $TAG, versionCode: $CODE"
+          if [ "$TAG" != "$CODE" ]; then
+            echo "::error::Tagi v$TAG ei vastaa versionCodea $CODE (app/build.gradle.kts)."
+            exit 1
+          fi
+
+      - name: Allekirjoitusavain salaisuuksista
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ]; then
+            echo "::error::Allekirjoituksen salaisuudet puuttuvat. Katso docs/AUTOMAATTINEN_JULKAISU.md."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/kasvila-reko.jks"
+          {
+            echo "storeFile=$RUNNER_TEMP/kasvila-reko.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+          } > keystore.properties
+
+      - name: Release-rakennus
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: gradle --no-daemon :app:assembleRelease
+
+      - name: Varmista allekirjoitus ja nimeä APK
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          APK=$(ls app/build/outputs/apk/release/*.apk | grep -v unsigned | head -1)
+          if [ -z "$APK" ]; then
+            echo "::error::Allekirjoitettua APK:ta ei syntynyt."; exit 1
+          fi
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --print-certs "$APK" | head -3
+          cp "$APK" "kasvila-reko-${GITHUB_REF_NAME}.apk"
+          rm -f keystore.properties "$RUNNER_TEMP/kasvila-reko.jks"
+
+      - name: Julkaisun kuvaus
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          N="${GITHUB_REF_NAME#v}"
+          if [ -f "docs/julkaisut/v$N.md" ]; then
+            cp "docs/julkaisut/v$N.md" release_notes.md
+          elif [ -f "MUUTOKSET_v$N.md" ]; then
+            cp "MUUTOKSET_v$N.md" release_notes.md
+          else
+            echo "Kasvila REKO $N" > release_notes.md
+          fi
+
+      - name: GitHub-julkaisu
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Kasvila REKO ${{ github.ref_name }}
+          body_path: release_notes.md
+          files: kasvila-reko-${{ github.ref_name }}.apk
