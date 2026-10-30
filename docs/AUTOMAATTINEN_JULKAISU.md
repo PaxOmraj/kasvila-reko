@@ -18,8 +18,21 @@ avaimella** kuin nykyinen sovellus (`kasvila-reko.jks` Windows-koneella).
 Avain tallennetaan repon salaisuuksiin. Niitä ei näe kukaan, ei edes repon
 omistaja jälkikäteen, eikä niitä näy lokeissa.
 
-1. Etsi avaintiedosto. Sen polku on Android Studio -projektin
-   `keystore.properties`-tiedoston rivillä `storeFile=`.
+1. Etsi avaintiedosto (`.jks` tai `.keystore`). Jos projektissa on
+   `keystore.properties`, polku on sen rivillä `storeFile=`. Jos tiedostoa ei ole
+   (APK on tehty Android Studion *Generate Signed App Bundle or APK* -velholla),
+   velho muistaa viimeksi käytetyn avaimen polun: Build → Generate Signed App
+   Bundle or APK → APK → Next. Tai etsi PowerShellissä:
+
+   ```powershell
+   Get-ChildItem C:\Users -Recurse -Include *.jks,*.keystore -ErrorAction SilentlyContinue | Select-Object FullName
+   ```
+
+   Aliaksen näkee komennolla (kysyy avaimen salasanan):
+
+   ```powershell
+   & "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -list -keystore "C:\polku\avain.jks"
+   ```
 2. Muuta avain tekstiksi Windowsin PowerShellissä (vaihda polku):
 
    ```powershell
@@ -33,9 +46,9 @@ omistaja jälkikäteen, eikä niitä näy lokeissa.
    | Nimi | Arvo |
    |---|---|
    | `KEYSTORE_BASE64` | leikepöydän teksti (liitä) |
-   | `KEYSTORE_PASSWORD` | `storePassword` keystore.properties-tiedostosta |
-   | `KEY_ALIAS` | `keyAlias` (esim. `kasvila`) |
-   | `KEY_PASSWORD` | `keyPassword` |
+   | `KEYSTORE_PASSWORD` | avaintiedoston salasana (`storePassword`) |
+   | `KEY_ALIAS` | avaimen alias (`keyAlias`, näkyy keytool-listauksessa) |
+   | `KEY_PASSWORD` | avaimen salasana (`keyPassword`, usein sama kuin edellinen) |
 
 Ilman salaisuuksia debug-rakennus toimii, mutta julkaisu pysähtyy ja kertoo,
 mitä puuttuu.
