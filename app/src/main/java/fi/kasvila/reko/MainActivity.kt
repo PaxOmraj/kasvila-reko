@@ -31,6 +31,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShoppingCart
+import fi.kasvila.ostot.OstotApp
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Mic
@@ -209,6 +211,8 @@ private data object SyncLogScreen : Screen
 private data object LanSyncScreen : Screen
 private data object RoutesScreen : Screen
 private data object RekoSummaryScreen : Screen
+// v58: Ostot ja varasto (oma moduuli ostot/).
+private data object OstotScreen : Screen
 // v54: REKO-ilmoituksen / tuottajaesittelyn tekstigeneraattori.
 private data class AnnouncementScreen(
     val ringId: String,
@@ -567,8 +571,18 @@ fun App(
             onUnpaid = { screen = UnpaidScreen },
             onWeekSummary = { screen = WeekSummaryScreen(Summaries.mondayOf(LocalDate.now()).toString()) },
             onDeliverySummary = { screen = DeliverySummaryScreen(LocalDate.now().toString()) },
-            onKuljetus = { screen = KuljetusScreen }
+            onKuljetus = { screen = KuljetusScreen },
+            onOstot = { screen = OstotScreen }
         )
+
+        is OstotScreen -> {
+            // OstotApp hoitaa oman takaisin-näppäimensä; etusivulta poistutaan onExit-kutsulla.
+            OstotApp(
+                deviceId = state.deviceId,
+                deviceName = state.deviceName,
+                onExit = { screen = HomeScreen }
+            )
+        }
 
         is RingScreen -> {
             BackHandler { screen = HomeScreen }
@@ -1286,7 +1300,8 @@ private fun HomeView(
     onUnpaid: () -> Unit,
     onWeekSummary: () -> Unit,
     onDeliverySummary: () -> Unit,
-    onKuljetus: () -> Unit
+    onKuljetus: () -> Unit,
+    onOstot: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -1302,6 +1317,9 @@ private fun HomeView(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onOstot) {
+                        Icon(Icons.Filled.ShoppingCart, "Ostot ja varasto")
+                    }
                     IconButton(onClick = onImport) {
                         Icon(Icons.Filled.Download, "Tuo piirit")
                     }

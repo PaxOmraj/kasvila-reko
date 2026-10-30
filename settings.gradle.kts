@@ -18,3 +18,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "KasvilaRekoTilaukset"
 include(":app")
+include(":ostot")   // v58: Ostot ja varasto -moduuli (docs/OSTOT_TIETOSISALTO.md)

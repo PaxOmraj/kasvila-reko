@@ -31,8 +31,8 @@ android {
         targetSdk = 34
         // v40+: the app shows this same versionName in the UI via BuildConfig,
         // so the version number lives in ONE place — update it only here.
-        versionCode = 57
-        versionName = "57"
+        versionCode = 58
+        versionName = "58"
     }
 
     signingConfigs {
@@ -75,6 +75,8 @@ android {
 }
 
 dependencies {
+    // v58: Ostot ja varasto -moduuli (ostot/).
+    implementation(project(":ostot"))
     implementation(platform("androidx.compose:compose-bom:2024.09.02"))
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
