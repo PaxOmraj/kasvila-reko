@@ -42,9 +42,9 @@ jobs:
         with:
           gradle-version: "9.4.1"
 
-      - name: Debug-rakennus (tarkistus)
+      - name: Tarkistus (Ostot-testit, debug- ja release-rakennus)
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
-        run: gradle --no-daemon :app:assembleDebug
+        run: gradle --no-daemon :ostot:testDebugUnitTest :app:assembleDebug :app:assembleRelease
 
       - name: Debug-APK talteen
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}

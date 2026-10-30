@@ -253,7 +253,7 @@ object Osto {
             } else others += prices
         }
         // Isot "kampanja" -luvut ilman desimaalierotinta ("249") jäävät pois tarkoituksella.
-        val price = others.filter { it > 0 && it != perKg }.maxOrNull()
+        val price = others.filter { it > 0 }.maxOrNull()
         var packG: Double? = null
         for (m in sizeRe.findAll(text)) {
             val n = m.groupValues[1].replace(',', '.').toDoubleOrNull() ?: continue

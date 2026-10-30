@@ -2,6 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- v58: viivakoodien ja hintalappujen luku. Kysytään vasta, kun Skannaa painetaan. -->
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <application>
+        <!-- Play-palvelut lataavat viivakoodi- ja tekstintunnistusmallit heti
+             asennuksen jälkeen, ei vasta ensimmäisellä skannauksella. -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="barcode,ocr" />
+    </application>
 </manifest>

@@ -42,6 +42,11 @@ dependencies {
     implementation("androidx.camera:camera-camera2:1.3.4")
     implementation("androidx.camera:camera-lifecycle:1.3.4")
     implementation("androidx.camera:camera-view:1.3.4")
-    implementation("com.google.mlkit:barcode-scanning:17.3.0")
-    implementation("com.google.mlkit:text-recognition:16.0.1")
+    // Tunnistusmallit tulevat Google Play -palveluista (ladataan kerran asennuksen
+    // yhteydessä, ks. AndroidManifest). Näin sovelluspaketti pysyy pienenä ja
+    // päivitys sovelluksen sisältä on nopea.
+    implementation("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1")
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
+
+    testImplementation("junit:junit:4.13.2")
 }

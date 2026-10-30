@@ -11,6 +11,7 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -108,6 +109,7 @@ fun OstoCamera(
     }
     var camera by remember { mutableStateOf<Camera?>(null) }
     var torch by remember { mutableStateOf(false) }
+    var problem by remember { mutableStateOf("") }
 
     DisposableEffect(lifecycleOwner) {
         val executor = Executors.newSingleThreadExecutor()
@@ -126,8 +128,9 @@ fun OstoCamera(
 
         val analyzer = ImageAnalysis.Analyzer { proxy -> analyze(proxy, barcodeMode, pendingText,
             previous, delivered, barcodes, texts,
-            onCode = { code -> main.execute { barcodeCb(code) } },
-            onRead = { text -> main.execute { textCb(text) } }) }
+            onCode = { code -> main.execute { problem = ""; barcodeCb(code) } },
+            onRead = { text -> main.execute { textCb(text) } },
+            onFail = { failed -> main.execute { problem = if (!failed) "" else "Tunnistus ei ole vielä valmis: puhelin lataa sitä Google Play -palveluista. Odota hetki verkkoyhteyden kanssa." } }) }
 
         providerFuture.addListener({
             val provider = runCatching { providerFuture.get() }.getOrNull() ?: return@addListener
@@ -164,6 +167,15 @@ fun OstoCamera(
                 Icon(if (torch) Icons.Filled.FlashOff else Icons.Filled.FlashOn, "Valo")
             }
         }
+        if (problem.isNotBlank()) {
+            Text(
+                problem,
+                color = MaterialTheme.colorScheme.onError,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.align(Alignment.Center).padding(24.dp)
+                    .background(MaterialTheme.colorScheme.error).padding(12.dp)
+            )
+        }
         if (readBarcodes) {
             Text(
                 "Osoita viivakoodia",
@@ -185,7 +197,8 @@ private fun analyze(
     barcodes: com.google.mlkit.vision.barcode.BarcodeScanner,
     texts: com.google.mlkit.vision.text.TextRecognizer,
     onCode: (String) -> Unit,
-    onRead: (String) -> Unit
+    onRead: (String) -> Unit,
+    onFail: (Boolean) -> Unit
 ) {
     val media = proxy.image
     if (media == null) {
@@ -200,18 +213,20 @@ private fun analyze(
     val image = InputImage.fromMediaImage(media, proxy.imageInfo.rotationDegrees)
     if (wantText) {
         texts.process(image)
-            .addOnSuccessListener { onRead(it.text) }
-            .addOnFailureListener { onRead("") }
+            .addOnSuccessListener { onFail(false); onRead(it.text) }
+            .addOnFailureListener { onFail(true); onRead("") }
             .addOnCompleteListener { proxy.close() }
         return
     }
     barcodes.process(image)
         .addOnSuccessListener { list ->
+            onFail(false)
             val code = list.firstOrNull { !it.rawValue.isNullOrBlank() }?.rawValue
             if (code != null) {
                 if (code == previous.get() && delivered.compareAndSet(false, true)) onCode(code)
                 previous.set(code)
             }
         }
+        .addOnFailureListener { onFail(true) }
         .addOnCompleteListener { proxy.close() }
 }
