@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- v57: read connectivity so the update check can be skipped when offline. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- v46: Bluetooth thermal receipt printer (ESC/POS). BLUETOOTH_SCAN is only
+         needed to list paired devices; it declares neverForLocation so no location
+         permission is pulled in. Legacy BLUETOOTH/BLUETOOTH_ADMIN cover API <= 30. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+
+    <!-- v52: biometric unlock -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+
+    <!--
+        v55 (kovennus): allowBackup=false. Sovelluksen tila on salattu levyllä,
+        mutta ilman tätä adb backup / Auto Backup voisi kopioida salatun tiedoston
+        ja avaimen kääreet ulos laitteelta. false sulkee tämän hyökkäyspinnan ja
+        estää samalla vahingossa tapahtuvan datan siirtymisen laitteelta toiseen
+        pilvivarmuuskopion kautta — varmuuskopiointi tehdään sovelluksen omalla
+        (salatulla) varmuuskopiotoiminnolla.
+    -->
+    <application
+        android:allowBackup="false"
+        android:label="Kasvila REKO"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.KasvilaReko">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+                v47: accept text shared from another app. A REKO customer's order
+                arrives as a Facebook or Messenger comment, and the shortest path
+                from there to a recorded order is the system share sheet:
+                select the comment, Share, "Kasvila REKO". No copy-paste, no
+                app switching, and it works with any app that can share text.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+
+</manifest>

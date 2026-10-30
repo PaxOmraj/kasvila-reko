@@ -1,0 +1,18 @@
+# ── Julkaisuallekirjoitus: EI KOSKAAN versionhallintaan ──────────────────────
+keystore.properties
+*.jks
+*.keystore
+
+# ── Gradle / Android build ───────────────────────────────────────────────────
+.gradle/
+build/
+app/build/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ── Android Studio / IntelliJ ────────────────────────────────────────────────
+.idea/
+*.iml
+.DS_Store

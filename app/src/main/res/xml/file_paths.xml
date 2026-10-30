@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Shared export files live in cacheDir/shared and are handed to other apps
+         (Quick Share, Bluetooth, email …) through the FileProvider. -->
+    <cache-path name="shared" path="shared/" />
+</paths>
