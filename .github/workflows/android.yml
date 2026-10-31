@@ -18,6 +18,11 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      julkaise:
+        description: "Julkaise allekirjoitettu versio (tagi vN tehdään versionCodesta)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -42,12 +47,26 @@ jobs:
         with:
           gradle-version: "9.4.1"
 
+      # Julkaisu käynnistyy joko tagista vN tai käsin (Actions → Android →
+      # Run workflow → julkaise). Käsin ajettaessa tagi tehdään versionCodesta.
+      - name: Julkaisutila
+        id: mode
+        run: |
+          CODE=$(grep -Po 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts)
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"; echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          elif [ "${{ inputs.julkaise }}" = "true" ]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"; echo "tag=v$CODE" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Tarkistus (Ostot-testit, debug- ja release-rakennus)
-        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        if: steps.mode.outputs.release != 'true'
         run: gradle --no-daemon :ostot:testDebugUnitTest :app:assembleDebug :app:assembleRelease
 
       - name: Debug-APK talteen
-        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        if: steps.mode.outputs.release != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: kasvila-reko-debug-${{ github.run_number }}
@@ -55,9 +74,11 @@ jobs:
           retention-days: 14
 
       - name: Tarkista tagi ja versionCode
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.mode.outputs.release == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.mode.outputs.tag }}
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
+          TAG="${RELEASE_TAG#v}"
           CODE=$(grep -Po 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts)
           echo "Tagi: $TAG, versionCode: $CODE"
           if [ "$TAG" != "$CODE" ]; then
@@ -66,7 +87,7 @@ jobs:
           fi
 
       - name: Allekirjoitusavain salaisuuksista
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.mode.outputs.release == 'true'
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -86,25 +107,36 @@ jobs:
           } > keystore.properties
 
       - name: Release-rakennus
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.mode.outputs.release == 'true'
         run: gradle --no-daemon :app:assembleRelease
 
       - name: Varmista allekirjoitus ja nimeä APK
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.mode.outputs.release == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.mode.outputs.tag }}
+          # Sama avain kuin v57:ssä (kasvila-reko.jks, alias kasvila). Jos sormenjälki
+          # ei täsmää, puhelin ei asentaisi päivitystä, joten julkaisu pysäytetään.
+          EXPECTED_SHA256: "13986dd96198bf896f7b6e76df9ef83407a3bf97ec3be62a066f2deacc7b0ec2"
         run: |
           APK=$(ls app/build/outputs/apk/release/*.apk | grep -v unsigned | head -1)
           if [ -z "$APK" ]; then
             echo "::error::Allekirjoitettua APK:ta ei syntynyt."; exit 1
           fi
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          "$BT/apksigner" verify --print-certs "$APK" | head -3
-          cp "$APK" "kasvila-reko-${GITHUB_REF_NAME}.apk"
+          CERTS=$("$BT/apksigner" verify --print-certs "$APK")
+          echo "$CERTS" | head -3
+          if ! echo "$CERTS" | grep -qi "SHA-256 digest: $EXPECTED_SHA256"; then
+            echo "::error::APK on allekirjoitettu eri avaimella kuin v57. Tarkista KEYSTORE_BASE64."; exit 1
+          fi
+          cp "$APK" "kasvila-reko-${RELEASE_TAG}.apk"
           rm -f keystore.properties "$RUNNER_TEMP/kasvila-reko.jks"
 
       - name: Julkaisun kuvaus
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.mode.outputs.release == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.mode.outputs.tag }}
         run: |
-          N="${GITHUB_REF_NAME#v}"
+          N="${RELEASE_TAG#v}"
           if [ -f "docs/julkaisut/v$N.md" ]; then
             cp "docs/julkaisut/v$N.md" release_notes.md
           elif [ -f "MUUTOKSET_v$N.md" ]; then
@@ -114,9 +146,11 @@ jobs:
           fi
 
       - name: GitHub-julkaisu
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.mode.outputs.release == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          name: Kasvila REKO ${{ github.ref_name }}
+          tag_name: ${{ steps.mode.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Kasvila REKO ${{ steps.mode.outputs.tag }}
           body_path: release_notes.md
-          files: kasvila-reko-${{ github.ref_name }}.apk
+          files: kasvila-reko-${{ steps.mode.outputs.tag }}.apk

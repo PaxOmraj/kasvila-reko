@@ -57,6 +57,9 @@ mitä puuttuu.
 
 1. Nosta `versionCode` ja `versionName` tiedostossa `app/build.gradle.kts`.
 2. Kirjoita muutokset tiedostoon `docs/julkaisut/vN.md`.
-3. Luo tagi `vN` ja pushaa se. GitHub rakentaa ja julkaisee noin 5–10 minuutissa.
+3. Luo tagi `vN` ja pushaa se, tai GitHubissa Actions → Android → Run workflow →
+   rasti *julkaise* (tagi tehdään versionCodesta). GitHub rakentaa ja julkaisee
+   noin 5–10 minuutissa. Julkaisu pysähtyy, jos APK:n allekirjoitus ei ole sama
+   avain kuin v57:ssä (sormenjälki tarkistetaan).
 
 Claude tekee nämä vaiheet, kun Jarmo pyytää julkaisemaan version.
