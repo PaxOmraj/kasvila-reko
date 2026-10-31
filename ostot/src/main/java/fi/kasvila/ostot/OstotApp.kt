@@ -315,7 +315,7 @@ private fun HomeView(
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             val inCart = Osto.inCart(state)
-                            for (n in cat.shoppingList.sortedBy { (inCart[n.kind to n.key] ?: 0.0) >= n.need }) {
+                            for (n in cat.shoppingList.sortedBy { s -> (inCart[s.kind to s.key] ?: 0.0) >= s.need }) {
                                 val ci = Osto.item(state, n.kind, n.key)
                                 val got = inCart[n.kind to n.key] ?: 0.0
                                 val done = got >= n.need
