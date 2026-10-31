@@ -299,10 +299,26 @@ object Osto {
     fun unsentCount(state: OstoState): Int =
         sendable(state).count { it.sentAt.isBlank() || it.changedAfterSend }
 
-    fun buildUpload(state: OstoState, deviceId: String, deviceName: String): String {
+    /**
+     * v60: lähteekö kuitin kuva tässä lähetyksessä. Kuva on iso, joten se lähetetään
+     * vain, kun työpöytä ei vielä kerro saaneensa sitä: kerran lähetettyä ei lähetetä
+     * uudelleen, ennen kuin työpöydän tila näyttää kerran ilman kuvaa.
+     */
+    fun needsPhoto(state: OstoState, s: OstoSession): Boolean {
+        if (s.receiptPhotoHash.isBlank() || s.receiptPhoto.isBlank()) return false
+        val st = state.statusOf(s.id)
+        if (st?.photo == s.receiptPhotoHash) return false
+        return s.photoSentHash != s.receiptPhotoHash || st != null
+    }
+
+    fun buildUpload(
+        state: OstoState, deviceId: String, deviceName: String,
+        image: (OstoSession) -> String = { "" }
+    ): String {
         val up = OstoUpload(
             deviceId = deviceId, deviceName = deviceName, exportedAt = nowIso(),
-            sessions = sendable(state), eanLearned = state.learned
+            sessions = sendable(state).map { if (needsPhoto(state, it)) it.copy(receiptImage = image(it)) else it },
+            eanLearned = state.learned
         )
         val el = ostoJson.encodeToJsonElement(up)
         return ostoJson.encodeToString(JsonElement.serializer(), stripPrivate(el))
@@ -341,7 +357,8 @@ object Osto {
         val received = catalog.received.toSet()
         val now = nowIso()
         val sessions = state.sessions.map { s ->
-            if (s.id in received) s.copy(sentAt = now, sentVia = via, changedAfterSend = false) else s
+            if (s.id in received) s.copy(sentAt = now, sentVia = via, changedAfterSend = false,
+                photoSentHash = s.receiptPhotoHash) else s
         }
         val lib = catalog.eanLibrary.associateBy { it.ean }
         val learned = state.learned.filter { l ->

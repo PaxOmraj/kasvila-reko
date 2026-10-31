@@ -78,7 +78,13 @@ data class OstoSession(
     val note: String = "",
     @SerialName("receipt_total") val receiptTotal: Double? = null,
     val lines: List<OstoLine> = emptyList(),
+    /** v60: kuitin kuvan tunniste. Itse kuva kulkee lähetyksessä kentässä receipt_image. */
+    @SerialName("receipt_photo_hash") val receiptPhotoHash: String = "",
+    /** v60: base64-JPEG, täytetään vain lähetykseen (ks. Osto.buildUpload). */
+    @SerialName("receipt_image") val receiptImage: String = "",
     // ── vain puhelimessa: eivät lähde työpöydälle (ks. toUpload) ──
+    @SerialName("_receipt_photo") val receiptPhoto: String = "",
+    @SerialName("_photo_sent_hash") val photoSentHash: String = "",
     @SerialName("_sent_at") val sentAt: String = "",
     @SerialName("_sent_via") val sentVia: String = "",
     @SerialName("_changed_after_send") val changedAfterSend: Boolean = false
@@ -137,7 +143,9 @@ data class SessionStatus(
     val id: String,
     val status: String = "pending",
     @SerialName("decided_at") val decidedAt: String = "",
-    val note: String = ""
+    val note: String = "",
+    /** v60: kuittikuva, joka työpöydällä on (tunniste). */
+    val photo: String = ""
 )
 
 @Serializable

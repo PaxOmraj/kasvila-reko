@@ -133,6 +133,7 @@ fun OstotApp(deviceId: String, deviceName: String, onExit: () -> Unit) {
                 onEditLine = { lid -> screen = OScreen.Line(ses.id, lid) },
                 onChange = { f -> updateSession(ses.id, f) },
                 onDelete = {
+                    OstoPhoto.delete(context, ses)
                     update { st -> st.copy(sessions = st.sessions.filter { it.id != ses.id }) }
                     screen = OScreen.Home
                 }
@@ -555,6 +556,7 @@ private fun SessionView(
                         Text(Osto.money(Osto.sessionTotalSeen(session), state.catalog.currency), fontWeight = FontWeight.Bold)
                     }
                 }
+                item { ReceiptPhotoCard(session, enabled = !decided, onChange = onChange) }   // v60
                 item {
                     OutlinedTextField(
                         value = receiptText,

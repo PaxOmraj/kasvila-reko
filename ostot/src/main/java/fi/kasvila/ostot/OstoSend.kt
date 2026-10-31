@@ -101,7 +101,7 @@ internal fun SendView(
         }
         busy = true
         message = ""
-        val body = Osto.buildUpload(state, deviceId, deviceName)
+        val body = Osto.buildUpload(state, deviceId, deviceName) { OstoPhoto.base64(context, it) }
         val n = sendable.size
         scope.launch {
             val res = withContext(Dispatchers.IO) { OstoLan.send(peer, code, body) }
@@ -123,7 +123,7 @@ internal fun SendView(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        val body = Osto.buildUpload(state, deviceId, deviceName)
+        val body = Osto.buildUpload(state, deviceId, deviceName) { OstoPhoto.base64(context, it) }
         val ids = sendable.map { it.id }.toSet()
         val ok = runCatching {
             context.contentResolver.openOutputStream(uri)?.use { it.write(body.toByteArray(Charsets.UTF_8)) }
@@ -132,7 +132,8 @@ internal fun SendView(
             val now = Osto.nowIso()
             onUpdate { st ->
                 st.copy(sessions = st.sessions.map {
-                    if (it.id in ids) it.copy(sentAt = now, sentVia = "file", changedAfterSend = false) else it
+                    if (it.id in ids) it.copy(sentAt = now, sentVia = "file", changedAfterSend = false,
+                        photoSentHash = it.receiptPhotoHash) else it
                 })
             }
             message = "Tallennettu ${ids.size} kertaa. Vie tiedosto koneelle ja avaa se: Varasto → Puhelimesta → Tuo puhelimen tiedosto."

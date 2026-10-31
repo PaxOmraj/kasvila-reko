@@ -139,4 +139,25 @@ class OstoLogicTest {
         ))
         assertEquals(2500.0, Osto.inCart(st)[Kind.ING to "X"]!!, 1e-9)
     }
+
+    @Test fun photoSentOnceUntilDesktopHasIt() {
+        val l = OstoLine(id = "L1", kind = Kind.ING, key = "X", packages = 1.0, packQty = 1000.0)
+        val s = OstoSession(id = "S-1", finishedAt = "2026-10-31T10:00:00", lines = listOf(l),
+            receiptPhoto = "S-1.jpg", receiptPhotoHash = "abc")
+        var st = OstoState(sessions = listOf(s))
+        assertTrue(Osto.needsPhoto(st, s))
+        val body = Osto.buildUpload(st, "d", "p") { "QUJD" }
+        assertTrue(body.contains("\"receipt_image\":\"QUJD\""))
+        assertFalse(body.contains("_receipt_photo"))
+        // LAN reply: received, desktop status not yet known → not resent
+        st = Osto.applyCatalog(st, OstoCatalog(received = listOf("S-1")), "lan")
+        assertFalse(Osto.needsPhoto(st, st.sessions[0]))
+        // desktop knows the visit but has no photo → resend
+        st = st.copy(catalog = OstoCatalog(sessionsStatus = listOf(SessionStatus("S-1", photo = ""))))
+        assertTrue(Osto.needsPhoto(st, st.sessions[0]))
+        // desktop has it → never again
+        st = st.copy(catalog = OstoCatalog(sessionsStatus = listOf(SessionStatus("S-1", photo = "abc"))))
+        assertFalse(Osto.needsPhoto(st, st.sessions[0]))
+        assertTrue(Osto.buildUpload(st, "d", "p") { "QUJD" }.contains("\"receipt_image\":\"\""))
+    }
 }
