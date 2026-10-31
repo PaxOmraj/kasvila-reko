@@ -144,6 +144,7 @@ Inventaariossa (`type: count`) hinta jätetään pois. Työpöytä arvottaa mä�
 | `items[].stock`, `min` | Vain raaka-aineille, grammoina. `null` jos varastoa ei seurata |
 | `items[].used` | `true`, jos raaka-aine on jossain reseptissä, varastossa tai ostettu. Puhelin näyttää nämä ensin; loput löytyvät haulla |
 | `sessions_status[].status` | `pending` (odottaa), `approved` (kirjattu), `partial` (osa riveistä kirjattu), `rejected` (hylätty). Puhelin voi arkistoida kerran, kun tila on muu kuin `pending` |
+| `sessions_status[].photo` | (v60 / TK_167) sen kuittikuvan tunniste, joka työpöydällä on, tai tyhjä. Puhelin lähettää kuvan uudelleen vain, kun tämä ei vastaa sen omaa kuvaa |
 
 ## Mitä työpöytä tekee hyväksyessään
 
@@ -160,3 +161,14 @@ Lisäksi rivin EAN-koodi ja pakkauskoko tallentuvat EAN-kirjastoon, kun rivi on 
 `version` kasvaa vain, kun kenttien merkitys muuttuu. Uusia valinnaisia kenttiä saa lisätä
 versiota nostamatta; molemmat päät ohittavat tuntemattomat kentät. Jos vastaanottaja saa
 uudemman version kuin osaa, se kieltäytyy ja pyytää päivittämään ohjelman.
+
+## Lisäys v60 / TK_167: kuitin kuva
+
+Ostokerralla (`purchase`) voi olla kaksi lisäkenttää. Vanha työpöytä ohittaa ne.
+
+| Kenttä | Selitys |
+|---|---|
+| `receipt_photo_hash` | kuvan tunniste (SHA-1:n 12 ensimmäistä merkkiä), aina mukana kun kuva on |
+| `receipt_image` | JPEG base64-muodossa, enintään 2000 px. Mukana vain, kun työpöytä ei vielä kerro saaneensa kuvaa (`sessions_status[].photo`). Muuten tyhjä |
+
+Työpöytä tallentaa kuvan tiedostoksi datakansion alikansioon `kuitit/<kerran id>.jpg` eikä pidä base64-tekstiä tiedoissa. Hinnat luetaan vasta, kun käyttäjä painaa "Lue kuittikuva": kuitin rivit yhdistetään kerran riveihin viivakoodin, tuotteen tai nimen perusteella, ja yhdistetty rivi saa kuitin rivihinnan (`price_per` = `total`, `price_source` = `receipt`). Yhdistämättömät kuittirivit lisätään uusina riveinä (id `R1`, `R2` …).
