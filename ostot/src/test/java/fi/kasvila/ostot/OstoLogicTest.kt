@@ -130,4 +130,13 @@ class OstoLogicTest {
         assertEquals(listOf("a"), Osto.search(items, "harka", setOf(Kind.ING)).map { it.key })
         assertEquals(listOf("b", "a"), Osto.search(items, "", setOf(Kind.ING)).map { it.key })
     }
+
+    @Test fun cartTicksShoppingList() {
+        val l = OstoLine(id = "L1", kind = Kind.ING, key = "X", packages = 2.0, packQty = 1000.0)
+        val st = OstoState(sessions = listOf(
+            OstoSession(id = "S-1", lines = listOf(l, l.copy(id = "L2", amount = 500.0))),
+            OstoSession(id = "S-2", type = "count", lines = listOf(l))
+        ))
+        assertEquals(2500.0, Osto.inCart(st)[Kind.ING to "X"]!!, 1e-9)
+    }
 }

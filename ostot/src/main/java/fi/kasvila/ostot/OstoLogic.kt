@@ -272,6 +272,24 @@ object Osto {
 
     fun round2(v: Double): Double = (v * 100).roundToLong() / 100.0
 
+    /**
+     * Mitä on jo korissa: ostokertojen rivit, joista työpöytä ei vielä ole
+     * päättänyt, summattuina tuotteittain (g tai kpl). Ostoslista kuittautuu näistä.
+     */
+    fun inCart(state: OstoState): Map<Pair<String, String>, Double> {
+        val out = HashMap<Pair<String, String>, Double>()
+        for (s in state.sessions) {
+            if (s.isCount || state.isDecided(s.id)) continue
+            for (l in s.lines) {
+                if (l.key.isBlank()) continue
+                val q = l.totalQty() ?: continue
+                val k = l.kind to l.key
+                out[k] = (out[k] ?: 0.0) + q
+            }
+        }
+        return out
+    }
+
     // ── lähetys ────────────────────────────────────────────────────────────
 
     /** Lähetettävät: valmiit kerrat, joista työpöytä ei vielä ole päättänyt. */

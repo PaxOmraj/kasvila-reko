@@ -705,7 +705,10 @@ fun App(
             ReceiptLogView(
                 state = state,
                 prefs = receiptPrefs,
-                onBack = { screen = SettingsHubScreen }
+                onBack = { screen = SettingsHubScreen },
+                onSetNextNumber = { n ->
+                    if (n > state.receiptCounter) persist(state.copy(receiptCounter = n - 1))
+                }
             )
         }
 

@@ -31,8 +31,8 @@ android {
         targetSdk = 34
         // v40+: the app shows this same versionName in the UI via BuildConfig,
         // so the version number lives in ONE place — update it only here.
-        versionCode = 58
-        versionName = "58"
+        versionCode = 59
+        versionName = "59"
     }
 
     signingConfigs {

@@ -53,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -313,11 +314,27 @@ private fun HomeView(
                 item {
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            for (n in cat.shoppingList) {
+                            val inCart = Osto.inCart(state)
+                            for (n in cat.shoppingList.sortedBy { (inCart[n.kind to n.key] ?: 0.0) >= n.need }) {
                                 val ci = Osto.item(state, n.kind, n.key)
+                                val got = inCart[n.kind to n.key] ?: 0.0
+                                val done = got >= n.need
                                 Row(Modifier.fillMaxWidth()) {
-                                    Text(ci?.label() ?: n.key, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text("vähintään " + Osto.qtyText(n.need, n.kind), style = MaterialTheme.typography.bodySmall)
+                                    Text(
+                                        (if (done) "✓ " else "") + (ci?.label() ?: n.key), Modifier.weight(1f),
+                                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                        textDecoration = if (done) TextDecoration.LineThrough else null,
+                                        color = if (done) MaterialTheme.colorScheme.onSurfaceVariant
+                                        else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        when {
+                                            done -> "korissa " + Osto.qtyText(got, n.kind)
+                                            got > 0 -> "vielä " + Osto.qtyText(n.need - got, n.kind)
+                                            else -> "vähintään " + Osto.qtyText(n.need, n.kind)
+                                        },
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
                                 }
                             }
                         }

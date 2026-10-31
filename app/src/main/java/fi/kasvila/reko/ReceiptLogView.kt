@@ -38,12 +38,40 @@ import kotlinx.coroutines.withContext
 fun ReceiptLogView(
     state: AppState,
     prefs: ReceiptPrefs,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    /** v59: jatka numerointia (esim. uudelleenasennuksen jälkeen). Arvo = seuraavan kuitin numero. */
+    onSetNextNumber: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     var query by remember { mutableStateOf("") }
+    var askNumber by remember { mutableStateOf(false) }
+    if (askNumber) {
+        var text by remember { mutableStateOf((state.receiptCounter + 1).toString()) }
+        val n = text.trim().toIntOrNull()
+        val ok = n != null && n > state.receiptCounter
+        AlertDialog(
+            onDismissRequest = { askNumber = false },
+            title = { Text("Seuraava kuittinumero") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Jatka numerointia esimerkiksi edellisen puhelimen tai sovelluksen " +
+                        "viimeisestä kuitista: anna sitä seuraava numero. Numeroa voi vain nostaa.",
+                        style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(text, { text = it.filter { c -> c.isDigit() }.take(7) },
+                        singleLine = true, label = { Text("Numero") },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        isError = !ok)
+                }
+            },
+            confirmButton = {
+                TextButton(enabled = ok, onClick = { onSetNextNumber(n!!); askNumber = false }) { Text("Tallenna") }
+            },
+            dismissButton = { TextButton(onClick = { askNumber = false }) { Text("Peruuta") } }
+        )
+    }
     var expanded by remember { mutableStateOf<String?>(null) }
     var pendingThermal by remember { mutableStateOf<IssuedReceipt?>(null) }
 
@@ -125,6 +153,14 @@ fun ReceiptLogView(
         Column(
             Modifier.padding(pad).padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState())
         ) {
+            // v59: seuraava kuittinumero näkyviin ja muutettavaksi. Numeroa voi vain
+            // nostaa, jotta samaa numeroa ei koskaan anneta kahdesti.
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Seuraava kuittinumero: ${state.receiptCounter + 1}", Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium)
+                TextButton(onClick = { askNumber = true }) { Text("Muuta") }
+            }
+            Spacer(Modifier.height(8.dp))
             if (all.isEmpty()) {
                 Text(
                     "Ei vielä annettuja kuitteja. Kun tulostat tai jaat kuitin, se näkyy täällä.",
